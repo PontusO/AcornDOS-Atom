@@ -6,7 +6,7 @@
 		IOBASE 	= $EFF0
 		INCLUDEVDG	= 0
 if (WD1770)		
-        include "..\src\ados1770.asm"
+        include "../src/ados1770.asm"
 else
-        include "..\src\ados.asm"
+        include "../src/ados.asm"
 endif

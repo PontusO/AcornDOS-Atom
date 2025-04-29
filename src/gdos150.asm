@@ -12,8 +12,8 @@
 ; Produces binary equivilent to SALFAA.
 
 if(ISROM)
-	include "..\src\atomdefs.asm"
-	include "..\src\wdfdc.asm"
+	include "../src/atomdefs.asm"
+	include "../src/wdfdc.asm"
 endif
 
 ; Set SIMPLEIO = 1 if using a smple IO port, set to 0 for PIA

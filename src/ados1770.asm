@@ -14,8 +14,8 @@
 ;
 
 if(ISROM)
-	include "..\src\atomdefs.asm"
-	include "..\src\wdfdc.asm"
+	include "../src/atomdefs.asm"
+	include "../src/wdfdc.asm"
 endif
 
 print "IOBASE=",~IOBASE

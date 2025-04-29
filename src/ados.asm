@@ -5,6 +5,8 @@ if(ISROM)
 	include "../src/intelfdc.asm"
 endif
 
+PRINT "Assembling format command"
+
 ;INCLUDEVDG	= 1
 ;SYS40 = 1
 
@@ -95,17 +97,17 @@ IFDCRESET	= IFDC8271 + 2				; Reset register
 ;--------------------------------------------
 
 .INLINE_PRINT  
-		pla                             ; Get textpointer from return addresss
+	pla                             ; Get textpointer from return addresss
         sta     TEXTPTR                     
         pla                             
         sta     TEXTPTR+1                 
 
         ldy     #$00                    ; zero offset
-.LE01E: inc     TEXTPTR					; increment LSB of ptr                    
+.LE01E: inc     TEXTPTR			; increment LSB of ptr                    
         bne     LE024                   ; no overflow, skip on
-        inc     TEXTPTR+1				; increment MSB of ptr
+        inc     TEXTPTR+1		; increment MSB of ptr
                      
-.LE024: lda     (TEXTPTR),Y				; get character to print                 
+.LE024: lda     (TEXTPTR),Y		; get character to print                 
         bmi     LE030                   ; end of string, yep exit
         beq     LE030                   ; null byte : exit
         jsr     OSWRCH               	; print it
@@ -139,9 +141,9 @@ IFDCRESET	= IFDC8271 + 2				; Reset register
         beq     LE08F                   ; Yep : read filename between ""
 		
 .LE04C: cmp     #CR                     ; Check end of line
-        beq     LE05C 					; yep :
+        beq     LE05C 			; yep :
                   
-        sta     STACKPAGE,X				; copy sting from STACKPAGE,y -> STACKPAGE,x                  
+        sta     STACKPAGE,X		; copy sting from STACKPAGE,y -> STACKPAGE,x                  
         inx                             
         iny                             
         lda     STACKPAGE,Y                  
@@ -575,7 +577,7 @@ IFDCRESET	= IFDC8271 + 2				; Reset register
 .LE237  jsr     dircom                  ; DIR
 
 .catcom2  
-		ldx     #$00                    
+	ldx     #$00                    
         stx     $B6                     
 .LE23E: lda     WKBASE + $0000,X        ; Print title
         cpx     #$08                    
@@ -769,10 +771,12 @@ IFDCRESET	= IFDC8271 + 2				; Reset register
         EQUB    "SHUT",   >shutcom,<shutcom
         EQUB    "GO",     >gocom,<gocom 
         EQUB    "SPOOL",  >spoolcom,<spoolcom
+        EQUB    "FORMAT", >formatcom,<formatcom
+        EQUB    "VERIFY", >verifycom,<verifycom
 if (INCLUDEVDG <> 0) 
         EQUB    "VDU",    >vducom,<vducom
 else
-		EQUB	"VDU",	  >LE067,<LE067		; just a convenient RTS
+	EQUB	"VDU",	  >LE067,<LE067		; just a convenient RTS
 endif
         EQUB    >exec,<exec             ; *filename entry
 
@@ -1103,7 +1107,7 @@ endif
 
 .LE582: jsr     put_title_cat           ; Write char in cat
         dex                             ; decrement count
-        bpl     LE582                   ; keep looing if not all done
+        bpl     LE582                   ; keep looping if not all done
 		
 .LE588: inx                             ; Move to next char of specified name
         lda     $0140,X                 ; Get a char from name
@@ -1113,7 +1117,7 @@ endif
         jsr     put_title_cat           ; Put next char in cat
         cpx     #TITLELEN               ; Done all?
         
-		bcc     LE588                   ; Nope keep going
+	bcc     LE588                   ; Nope keep going
         bcs     write_cat_resqual       ; Yep : write back to disk
 
 ;============================================
@@ -1186,7 +1190,7 @@ endif
         brk                             
 
 .DISK_FULL: 
-		jsr     INLINE_PRINT            ; FULL error
+	jsr     INLINE_PRINT            ; FULL error
         EQUB    "FULL"                  
         brk                             
 
@@ -1351,7 +1355,7 @@ if (INCLUDEVDG <> 0)
         lda     VDUVECS+3,X             
         sta     RDCVEC+1                
       
-		jsr     INLINE_PRINT            ; print signon message
+	jsr     INLINE_PRINT            ; print signon message
         EQUB    $06,$0F,$0C             
         EQUB    "ACORN ATOM"            
         EQUB    $0A,$0A,$0D             
@@ -1437,8 +1441,8 @@ endif
 ; Start motor                       HARDWARE
 ;--------------------------------------------
 
-.START_MOTOR_SELECT: 
-		lda     DRIVENO                 ; Get drive no
+.START_MOTOR_SELECT:
+	lda     DRIVENO                 ; Get drive no
         and     #$03                    ; Mask out all but driveno
         tay                             
         ora     #MOTOR_ON               ; Flag drive running
@@ -2752,13 +2756,290 @@ VECOFS		= LODVEC - VECBASE
 ;        EQUB    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 ;        EQUB    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
+;============================================
+; Format and verify command, only if VDG disabled
+;--------------------------------------------
+if (INCLUDEVDG = 0)
+  if (FORMAT)
+.verifycom
+        JSR     INLINE_PRINT			; Print confirmation message
+        EQUB    CR
+        EQUS    "VERIFYING DISK"
+        EQUB    LF, CR
+        NOP
+
+        lda     #0
+        jmp     L28EF
+
+.formatcom
+        JSR     INLINE_PRINT			; Print confirmation message
+        EQUB    $0D
+        EQUS    "OK TO FORMAT DRIVE "
+        NOP
+
+        LDA     DRIVENO				; print drive number
+        JSR     PRINT_HEXA_LOWN
+
+        JSR     INLINE_PRINT			; Print " ?"
+        EQUS    " ?"
+	NOP
+
+        JSR     OSECHO				; read a character
+        CMP     #$59				; check for 'S'
+        BEQ     DO_FORMAT			; yep : go do it
+.L2847
+        JSR     OSCRLF				; print EOL and exit to dos
+        RTS
+
+.DO_FORMAT
+        JSR     OSCRLF				; print EOL 	
+
+        JSR     SELECT_WAIT_READY		; select drive, wait for it to come up to speed
+        JSR     WAIT_NOT_BUSY			; Wait for drive ready
+
+        LDA     #<L28EE				; setup NMI jump
+        STA     INTJMP
+        LDA     #>L28EE
+        STA     INTJMP+1
+		
+        LDX     #$00
+        STX     SECTORID
+.L2863
+        STX     TRACKNO				; set track no
+        JSR     copy_for_write			; copy NMI code into RAM
+
+        LDY     #$27
+.L2872
+        LDA     #$01
+        STA     WKTitle,Y
+        DEY
+        JSR     L2969
+
+        STA     WKTitle,Y
+        DEY
+        LDA     #$00
+        STA     WKTitle,Y
+        DEY
+        LDA     TRACKNO
+        STA     WKTitle,Y
+        DEY
+        BPL     L2872
+
+        LDA     #ICMD_FORMAT+ICMD_DRIVE0	; Send format command to drive
+        JSR     fdc_send_cmd_drv
+
+        LDA     TRACKNO				; send track number
+        JSR     SEND_PARAM_BYTE
+
+        LDA     #$10				; Gap 3 length (-6, see data sheet)
+        JSR     SEND_PARAM_BYTE
+
+        LDA     #IREC_LEN1+SECTRACK		; record length (256) + no sectors / track ($20 + $0A)
+        JSR     SEND_PARAM_BYTE
+
+        LDA     #$00				; Gap 5 length (-6, see data sheet) 
+        JSR     SEND_PARAM_BYTE
+
+        LDA     #$10				; Gap 1 length (-6, see data sheet)
+        JSR     SEND_PARAM_BYTE
+
+        JSR     WAIT_NOT_BUSY			; Wait for command completion
+
+        JSR     get_fdc_result			; get result
+
+        BNE     L28DF
+
+        LDX     TRACKNO				; get current track number
+        INX					; increment it
+        CPX     #TRACKS				; done all?
+        BNE     L2863				; no : loop again
+
+        JSR     INLINE_PRINT
+        EQUB    $0D
+        EQUS    "DISK FORMATTED"
+        EQUB    $0A, $0D
+        NOP
+
+        LDA     #1                              ; Create catalog structure 
+        JMP     L28EF                           ; Skip in to verify
+.L28DF
+        JSR     PRINT_HEXA
+
+        JSR     INLINE_PRINT
+        EQUB    $0D
+        EQUS    "CRUNCH"
+        NOP
+
+        BRK
+else
+        JMP     L28EF
+endif
+.L28EE
+        RTS                                     ; Dummy interrupt handler.
+
+
+; Verify code starts here
+
+.L28EF
+        STA     $81
+        JSR     SELECT_WAIT_READY		; wait for drive
+
+        LDA     #<L28EE				; setup NMI jump
+        STA     INTJMP
+        LDA     #>L28EE
+        STA     INTJMP+1
+
+if(TRACKS=40)
+        LDA     #39
+else
+        LDA     #79
+endif
+        STA     TRACKNO
+.L28FE
+        LDA     TRACKNO
+        JSR     PRINT_HEXA			; print track no
+        JSR     PRSPACE
+        JSR     PRSPACE
+
+        LDY     #$00				; Zero sector no
+.L2909
+        STY     SECTORNO
+        LDA     #$0A
+        STA     RETRYCOUNT
+.L290F
+        LDA     #ICMD_VERIFY_MULTI+ICMD_DRIVE0	; Verify data command
+        JSR     fdc_send_cmd_drv		; send to FDC
+
+        LDA     TRACKNO				; Send track number
+        JSR     SEND_PARAM_BYTE
+
+        LDA     SECTORNO			; send sector number
+        JSR     SEND_PARAM_BYTE
+
+        LDA     #IREC_LEN1+$01			; record length (256 bytes), verify 1 sector
+        JSR     SEND_PARAM_BYTE
+
+        JSR     get_fdc_result			; get result from FDC
+        BNE     DO_RETRY			; Error : retry
+
+        INY					; increment sector no
+        CPY     #SECTRACK			; done all?
+        BNE     L2909				; nope : loop again
+
+        DEC     TRACKNO				; increment track no
+        BNE     L28FE				; nope : loop again						
+
+        JSR     OSCRLF				; print EOL
+
+        JSR     INLINE_PRINT			; print verified message
+        EQUS    "VERIFIED"
+        NOP
+
+        LDA     $81
+        BNE     write_catalog
+        JSR     OSCRLF
+        RTS
+.write_catalog        
+        JSR     INLINE_PRINT			; print verified message
+        EQUS    ", WRITING CATALOG"
+        EQUB    $0A,$0D
+        NOP
+
+; Setup a blank catalog structure
+        LDA     #$00				; setup file count =0 
+        STA     WKFileCount				
+if(TRACKS=40)
+        lda	#>TotalTrk40	                ; set no of tracks
+        sta	WKSecCOpt
+        lda	#<TotalTrk40
+        sta	WKSecCLSB
+else
+        lda	#>TotalTrk80	                ; set no of tracks
+        sta	WKSecCOpt
+        lda	#<TotalTrk80
+        sta	WKSecCLSB
+endif		
+;        LDA     #$03				; Setup default opt
+;        STA     WKSecCOpt
+;        LDA     #$20				; setup default qualifier
+;        STA     WKSecCLSB
+
+        JSR     write_cat			; write blank catalog to disk
+
+        JSR     INLINE_PRINT			; print verified message
+        EQUS    "SETTING DISK NAME"
+        EQUB    $0A,$0D
+        NOP
+
+; Copy default volume name and write to disk.
+        ldx     #$40
+        ldy     #$00
+.getvolname
+        lda     volumename,y                    ; Copy name to work buffer
+        sta     STACKPAGE,x
+
+        iny
+        inx
+
+        cmp     #CR
+        bne     getvolname
+
+        lda     #'0'                            ; Always drive 0
+        jsr     readcat                         ; *DIR command
+        ldx     #TITLELEN                       ; Length of title
+        lda     #SPACE                          ; Blank out old title 
+
+        jsr     LE582                           ; Set new title
+.L294B
+        NOP
+        RTS
+
+.DO_RETRY
+        DEC     RETRYCOUNT			; decrement retry count
+        BEQ     RETRY_FAILED			; exhausted retries? yes : goto fail
+        JMP     L290F
+.RETRY_FAILED
+        JSR     PRINT_HEXA					
+
+        JSR     INLINE_PRINT			; print error message
+        EQUB	$0A
+        EQUS    "FAIL AT "
+        NOP
+
+        LDA     SECTORNO			; get sector no
+        JSR     PRINT_HEXA			; print it
+	BRK					; exit
+
+.L2969
+        LDX     SECTORID
+        DEX
+        BPL     L2970
+
+        LDX     #$09					; sector no?
+.L2970
+        TXA
+        STX     SECTORID
+        RTS
+
+.SELECT_WAIT_READY
+        JSR     START_MOTOR_SELECT		; start motor and select drive
+.L2977
+        JSR     TESTREADY			; wait for it to become ready
+        BEQ     L2977
+
+        RTS
+
+.volumename
+        EQUS    "DISK"
+        EQUB    CR
+endif
+
 ;Pad rest of rom with $FF
 {
 	start = P%
 	for n, start, $EFFF
 		equb $FF
-	next 
-	
+	next 	
 }
 
 if (ISROM=1)

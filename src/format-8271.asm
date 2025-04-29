@@ -5,7 +5,7 @@
 ; of the format code, to remain inline with the 1770 implementation.
 ; 
 
-		include "../src/atomdefs.asm"
+	include "../src/atomdefs.asm"
        	include "../src/intelfdc.asm"
 
         org     $2800
@@ -14,7 +14,7 @@ if(FORMAT)
         JSR     INLINE_PRINT				; Print confirmation message
 
         EQUB    $0D
-        EQUS    "Do you really want to format drive "
+        EQUS    "DO YOU REALLY WANT TO FORMAT DRIVE "
 
         LDA     DRIVENO						; print drive number
         JSR     PRINT_HEXA_LOWN
@@ -276,5 +276,5 @@ endif
 ; however the assembled copy is not saved (as ISROM=0)
 ;
         SYS40   = 1
-		INCLUDEVDG=0
+	INCLUDEVDG=0
         include "../src/ados.asm"

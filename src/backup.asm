@@ -3,9 +3,9 @@
 ; Copies both sides of a physical disk.
 ;
 
-    include "..\src\atomdefs.asm"
-    include "..\src\wdfdc.asm"
-    include "..\src\intelfdc.asm"
+    include "../src/atomdefs.asm"
+    include "../src/wdfdc.asm"
+    include "../src/intelfdc.asm"
 	
 L214F   = $214F
 
@@ -291,4 +291,4 @@ SAVE "BACKUP.DFS",BeebDisStartAddr,BeebDisEndAddr
 ; Here we include and assemble the system rom, this way we can access it's symbols
 ; however the assembled copy is not saved (as ISROM=0)
 ;
-        include "..\src\rominclude.asm"
+        include "../src/rominclude.asm"

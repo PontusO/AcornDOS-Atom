@@ -26,6 +26,7 @@ SAVTRK1		= &91
 SAVTRK2		= &92										
 SAVTRK3		= &93										
 
+SECTORID	= $80
 FILENAMEPTR = $9A						; Pointer to filename
 LOADADDR	= $9C						; Load address
 EXECADDR	= $9E						; Execution address
