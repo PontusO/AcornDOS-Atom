@@ -5,10 +5,9 @@ if(ISROM)
 	include "../src/intelfdc.asm"
 endif
 
-PRINT "Assembling format command"
-
-;INCLUDEVDG	= 1
-;SYS40 = 1
+INCLUDEVDG =? 1
+SYS40 =? 1
+FORMAT =? 0
 
 if (INCLUDEVDG <> 0)
 if (SYS40 = 0)
@@ -141,21 +140,21 @@ IFDCRESET	= IFDC8271 + 2				; Reset register
         beq     LE08F                   ; Yep : read filename between ""
 		
 .LE04C: cmp     #CR                     ; Check end of line
-        beq     LE05C 			; yep :
-                  
-        sta     STACKPAGE,X		; copy sting from STACKPAGE,y -> STACKPAGE,x                  
-        inx                             
-        iny                             
-        lda     STACKPAGE,Y                  
+        beq     LE05C 			; yep
+
+        sta     STACKPAGE,X		; copy string from STACKPAGE,y -> STACKPAGE,x
+        inx
+        iny
+        lda     STACKPAGE,Y
         cmp     #SPACE                  ; Space, end reading
-        bne     LE04C                   
+        bne     LE04C
 
 .LE05C: lda     #CR                     ; End filename with $0D
-        sta     STACKPAGE,X                  
+        sta     STACKPAGE,X
 
         lda     #>STACKPAGE             ; Filenamepointer=$140
-        sta     FILENAMEPTR+1                     
-        ldx     #FILENAMEPTR                  
+        sta     FILENAMEPTR+1
+        ldx     #FILENAMEPTR
 .LE067: rts                             
 
 ;============================================
@@ -771,8 +770,10 @@ IFDCRESET	= IFDC8271 + 2				; Reset register
         EQUB    "SHUT",   >shutcom,<shutcom
         EQUB    "GO",     >gocom,<gocom 
         EQUB    "SPOOL",  >spoolcom,<spoolcom
+if (FORMAT == 1)
         EQUB    "FORMAT", >formatcom,<formatcom
         EQUB    "VERIFY", >verifycom,<verifycom
+endif
 if (INCLUDEVDG <> 0) 
         EQUB    "VDU",    >vducom,<vducom
 else
@@ -1414,13 +1415,13 @@ endif
         bne     LE749                   ; ready, return, don't need to re-read.
 
 .load_cat_always		
-        jsr     START_MOTOR_SELECT             ; Start drive motor and select drive
+        jsr     START_MOTOR_SELECT      ; Start drive motor and select drive
         jsr     init_fdc_lcat           ; Init FDC for cat load
 		
 .LE73C: jsr     copy_for_read           ; Copy read routine into RAM
         lda     #ICMD_READ_MULTI+ICMD_DRIVE0
-										; Read multiple sectors drive 0
-        jsr     read_write_sectors     ; Go read them
+                                        ; Read multiple sectors drive 0
+        jsr     read_write_sectors      ; Go read them
         jsr     HANDLE_ERROR            ; Handle any errors.
         bne     LE73C                   ; no errors, loop until all read.
 .LE749: rts                             
@@ -1428,11 +1429,11 @@ endif
 ; Write catalog
 ; Assumes drive is started and selected.
 .write_cat: 
-		jsr     init_fdc_lcat           ; Init FDC for cat load
+	jsr     init_fdc_lcat           ; Init FDC for cat load
 .LE74D: jsr     copy_for_write          ; copy send bytes to disk into lowram
         lda     #ICMD_WRITE_MULTI+ICMD_DRIVE0
-										; Write multiple to drive 0
-        jsr     read_write_sectors     ; Send the commnand
+					; Write multiple to drive 0
+        jsr     read_write_sectors      ; Send the commnand
         jsr     HANDLE_ERROR            ; Handle any errors.
         bne     LE74D                   ; no errors, loop until all written
         rts                             
@@ -1448,9 +1449,9 @@ endif
         ora     #MOTOR_ON               ; Flag drive running
         sta     DRIVENO                 ; update driveno
 
-        lda     #ICMD_WRITE_SPEC         ; Write special reg command
+        lda     #ICMD_WRITE_SPEC        ; Write special reg command
         jsr     fdc_send_cmd            
-        lda     #ISR_DRV_CTL_OUT         ; Drive control output register
+        lda     #ISR_DRV_CTL_OUT        ; Drive control output register
         jsr     SEND_PARAM_BYTE          
         lda     LE78E,Y                 ; Get parameter byte
         jsr     SEND_PARAM_BYTE         ; Send it
@@ -1681,16 +1682,16 @@ NMIWRITELEN	= NMIWRITEEND-NMIWRITE
 ; Table for initialising controler  HARDWARE
 ;--------------------------------------------
 
-.LE862: EQUB    ICMD_INIT_8271			,$0D				; Init 8271, $0d, 
-		EQUB	$14											; step time (ms)				
-		EQUB	$05											; settle time (ms)
-		EQUB	$CA											; index count before unload (msn) head load time (lsn)
+.LE862: EQUB    ICMD_INIT_8271,$0D		   ; Init 8271, $0d, 
+		EQUB	$14			   ; step time (ms)				
+		EQUB	$05			   ; settle time (ms)
+		EQUB	$CA			   ; index count before unload (msn) head load time (lsn)
 		EQUB	$EA  
         
-		EQUB    ICMD_INIT_8271			,$10,$FF,$FF,$00,$EA ; Load bad tracks drive 0
-        EQUB    ICMD_INIT_8271			,$18,$FF,$FF,$00,$EA ; load bad tracks drive 1
-        EQUB    ICMD_WRITE_SPEC			,$17,$C1,$EA         ; Write special reg 17, DMA mode.
-.LE878  EQUB    ICMD_SEEK + ICMD_DRIVE0	,$00,$EA             ; Seek to track 0
+	EQUB    ICMD_INIT_8271,$10,$FF,$FF,$00,$EA ; Load bad tracks drive 0
+        EQUB    ICMD_INIT_8271,$18,$FF,$FF,$00,$EA ; load bad tracks drive 1
+        EQUB    ICMD_WRITE_SPEC,$17,$C1,$EA        ; Write special reg 17, DMA mode.
+.LE878  EQUB    ICMD_SEEK + ICMD_DRIVE0,$00,$EA    ; Seek to track 0
 
 ;============================================
 ; NMIVEC SUB
@@ -2966,12 +2967,14 @@ endif
 
         JSR     write_cat			; write blank catalog to disk
 
+        rts
+
+; Copy default volume name and write to disk.
         JSR     INLINE_PRINT			; print verified message
         EQUS    "SETTING DISK NAME"
         EQUB    $0A,$0D
         NOP
 
-; Copy default volume name and write to disk.
         ldx     #$40
         ldy     #$00
 .getvolname

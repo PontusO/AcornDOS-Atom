@@ -10,7 +10,7 @@ include ../vars.mk
 
 # roms, Build 40 and 80 column variants of system roms with both 
 # floppy controllers
-all: ados40 ados80 ados-novdg ados1770-bc00 ados1770-eff0 gdos1770-bc00 gdos1770-eff0 sysinfo buildrom
+all: ados40 ados80 ados-novdg-40t ados-novdg-80t ados1770-bc00 ados1770-eff0 gdos1770-bc00 gdos1770-eff0 sysinfo buildrom
 
 # roms 
 
@@ -26,8 +26,11 @@ ados40: $(ROMSRC) $(INCLUDES)
 ados80: $(ROMSRC) $(INCLUDES)
 	$(ASM) -i $(SRCPATH)/ados.asm -D INCLUDEVDG=1 -D SYS40=0 -D ISROM=1 -o ados-40.rom -v > $(LIST)/ados-80.txt
 
-ados-novdg: $(ROMSRC) $(INCLUDES)
-	$(ASM) -v -i $(SRCPATH)/ados.asm -D INCLUDEVDG=0 -D SYS40=1 -D ISROM=1 -D TRACKS=40 -D FORMAT=1 -o ados-40.rom -v > $(LIST)/ados-novdg.txt
+ados-novdg-40t: $(ROMSRC) $(INCLUDES)
+	$(ASM) -v -i $(SRCPATH)/ados.asm -D INCLUDEVDG=0 -D ISROM=1 -D TRACKS=40 -D FORMAT=1 -o ados-novdg-40t.rom -v > $(LIST)/ados-novdg-40t.txt
+
+ados-novdg-80t: $(ROMSRC) $(INCLUDES)
+	$(ASM) -v -i $(SRCPATH)/ados.asm -D INCLUDEVDG=0 -D ISROM=1 -D TRACKS=80 -D FORMAT=1 -o ados-novdg-80t.rom -v > $(LIST)/ados-novdg-80t.txt
 
 gdos1770-bc00: $(ROMSRC) $(INCLUDES)
 	$(ASM) -i $(SRCPATH)/gdos150.asm -D IOBASE=\$$BC10 -D ISROM=1 -o gdos1770-bc00.rom -v > $(LIST)/gdos1770-bc00.txt
